@@ -21,8 +21,8 @@ class Chat:
              "content_user_lang": translator.forward(START_PROMT)}]
 
     def write_model_message(self, message: str, translator: BiTranslator) -> None:
-        content = message.replace("\n", "").rsplit("{}".format(END_HEADER_TOKEN.replace('\n', '')), 1)[
-            1].replace(EOT_TOKEN, "")
+        content = message.replace("\n", "").rsplit(f"{ASSISTANT_NAME}", 1)[
+            1]
         content = re.sub(r"<\|.*?\|>", "", content)
         translated_content = translator.forward(content)
         self.chat.append({"role": ASSISTANT_NAME, "content_model_lang": content,

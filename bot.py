@@ -10,9 +10,10 @@ from user_config import UserConfig
 load_dotenv()
 TELEGRAM_API_KEY = os.getenv('TELEGRAM_API_KEY')
 
-bot = telebot.TeleBot(TELEGRAM_API_KEY)
+bot = telebot.TeleBot(TELEGRAM_API_KEY, threaded=False,
+                      skip_pending=True, num_threads=1)
 model = Model()
-translator = BiTranslator(from_lang=model.lang, to_lang="ru")
+translator = BiTranslator()
 users_chats: dict[int, UserConfig] = {}
 
 
@@ -74,5 +75,4 @@ def user_message(message):
 
 
 if __name__ == "__main__":
-    bot.polling(none_stop=True, interval=10,
-                long_polling_timeout=None)
+    bot.polling(none_stop=True)
