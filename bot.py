@@ -4,7 +4,7 @@ import telebot
 from dotenv import load_dotenv
 
 from chat import Chat
-from support import BiTranslator, Model
+from support import BiTranslator, Model, Database
 from user_config import UserConfig
 
 load_dotenv()
@@ -15,6 +15,7 @@ bot = telebot.TeleBot(TELEGRAM_API_KEY, threaded=False,
 model = Model()
 translator = BiTranslator()
 users_chats: dict[int, UserConfig] = {}
+database = Database()
 
 
 def before_start(message):
@@ -33,6 +34,7 @@ def start_dialog(message):
         before_start(message)
         return
 
+    database.restart(message.from_user.id)
     users_chats[message.from_user.id].clear(translator)
     bot.send_message(message.from_user.id, "RESTARTED")
 
@@ -56,8 +58,10 @@ def user_message(message):
 
     user_config = users_chats[message.from_user.id]
     user_config.chat.write_user_message(message.text, translator)
+    database.write_user_message(message.from_user.id, message.text)
     model_output = model.generate(user_config.chat.model_chat)
-    user_config.chat.write_model_message(model_output, translator)
+    model_message = user_config.chat.write_model_message(model_output, translator)
+    database.write_model_message(message.from_user.id, model_message)
 
     last_user_message = user_config.chat.last_user_message()
     last_model_message = user_config.chat.last_model_message()

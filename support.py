@@ -2,6 +2,8 @@ import argostranslate.package
 import argostranslate.translate
 import torch
 from transformers import AutoModelForCausalLM, AutoTokenizer, T5ForConditionalGeneration, T5Tokenizer
+import sqlite3
+import datetime
 
 BEGIN_TOKEN: str = "<|begin_of_text|>"
 START_PROMT: str = "You are a coach assistant who must help the user solve his problems using your knowledge. Be calm like a professional, don't show emotions. First of all, ask what advice the user came to your chat for."
@@ -31,18 +33,6 @@ class Model:
             self.model.generate(**inputs, max_new_tokens=self.max_new_tokens))[0]
 
 
-# class BiTranslator:
-#     def __init__(self, from_lang: str, to_lang: str):
-#         self.forward_translator, self.backward_translator = load_translators(
-#             from_lang, to_lang)
-
-#     def forward(self, message: str) -> str:
-#         return self.forward_translator.translate(message)
-
-#     def backward(self, message: str) -> str:
-#         return self.backward_translator.translate(message)
-
-
 def load_model():
     return AutoModelForCausalLM.from_pretrained(
         MODEL_PATH,
@@ -56,42 +46,6 @@ def load_tokenizer():
         MODEL_PATH,
         use_fast=True,
     )
-
-
-# def load_translators(from_lang: str, to_lang: str):
-#     argostranslate.package.update_package_index()
-#     available_packages = argostranslate.package.get_available_packages()
-#     available_package = list(
-#         filter(
-#             lambda x: x.from_code == from_lang and x.to_code == to_lang, available_packages
-#         )
-#     )[0]
-#     download_path = available_package.download()
-#     argostranslate.package.install_from_path(download_path)
-
-#     available_package = list(
-#         filter(
-#             lambda x: x.from_code == to_lang and x.to_code == from_lang, available_packages
-#         )
-#     )[0]
-#     download_path = available_package.download()
-#     argostranslate.package.install_from_path(download_path)
-
-#     installed_languages = argostranslate.translate.get_installed_languages()
-
-#     from_to_translator = list(filter(
-#         lambda x: x.code == from_lang,
-#         installed_languages))[0].get_translation(list(filter(
-#             lambda x: x.code == to_lang,
-#             installed_languages))[0])
-
-#     to_from_translator = list(filter(
-#         lambda x: x.code == to_lang,
-#         installed_languages))[0].get_translation(list(filter(
-#             lambda x: x.code == from_lang,
-#             installed_languages))[0])
-
-#     return (from_to_translator, to_from_translator)
 
 class BiTranslator:
     def __init__(self):
@@ -112,3 +66,25 @@ class BiTranslator:
 def load_translators():
     model_name = 'utrobinmv/t5_translate_en_ru_zh_large_1024'
     return T5ForConditionalGeneration.from_pretrained(model_name).to("cuda"), T5Tokenizer.from_pretrained(model_name)
+
+class Database:
+    def __init__(self):
+        self.conn = sqlite3.connect("data.db")
+        self.cur = self.conn.cursor()
+
+        self.cur.execute("CREATE TABLE IF NOT EXISTS messages(id PRIMAL KEY, user_id integer, message TEXT, time integer, role integer)")
+    
+    def write_user_message(self, user_id: int, message: str) -> None:
+        now = int(datetime.datetime.now().timestamp())
+        self.cur.executemany("INSERT INTO messages(user_id, message, time, role) values (?, ?, ?, ?)", [(user_id, message, now, 1)])
+        self.conn.commit()
+
+    def write_model_message(self, user_id: int, message: str) -> None:
+        now = int(datetime.datetime.now().timestamp())
+        self.cur.executemany("INSERT INTO messages(user_id, message, time, role) values (?, ?, ?, ?)", [(user_id, message, now, 2)])
+        self.conn.commit()
+
+    def restart(self, user_id) -> None:
+        now = int(datetime.datetime.now().timestamp())
+        self.cur.executemany("INSERT INTO messages(user_id, message, time, role) values (?, ?, ?, ?)", [(user_id, "RESTARTED", now, 0)])
+        self.conn.commit()

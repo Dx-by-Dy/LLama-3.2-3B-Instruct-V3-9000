@@ -20,7 +20,7 @@ class Chat:
              "content_model_lang": START_PROMT,
              "content_user_lang": translator.forward(START_PROMT)}]
 
-    def write_model_message(self, message: str, translator: BiTranslator) -> None:
+    def write_model_message(self, message: str, translator: BiTranslator) -> str:
         content = message.replace("\n", "").rsplit(f"{ASSISTANT_NAME}", 1)[
             1]
         content = re.sub(r"<\|.*?\|>", "", content)
@@ -30,6 +30,7 @@ class Chat:
         self.model_chat += START_HEADER_TOKEN + \
             ASSISTANT_NAME + END_HEADER_TOKEN + \
             content
+        return content
 
     def write_user_message(self, message: str, translator: BiTranslator) -> None:
         translated_message = translator.backward(message)
